@@ -246,9 +246,7 @@ async function fetchMetar() {
   const icao = document.getElementById('icao').value.trim().toUpperCase();
   const userRunway = document.getElementById('runway').value;
   const tailNumber = document.getElementById('tailNumber').value;
-  const proxy = "https://api.allorigins.win/raw?url=";
-  const apiUrl = `https://aviationweather.gov/api/data/metar?ids=${icao}&format=json&mostRecent=true`;
-  const url = proxy + encodeURIComponent(apiUrl);
+  const url = `https://aviationweather.gov/api/data/metar?ids=${icao}&format=json&mostRecent=true`;
 
   try {
     const response = await fetch(url);
@@ -423,3 +421,4 @@ window.addEventListener("load",()=>{
 </script>
 </body>
 </html>
+
