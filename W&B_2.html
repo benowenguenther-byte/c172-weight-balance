@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>METAR Weather + Weight & Balance</title>
+<style>
+  :root {
+    --primary: #003366;
+    --accent: #0078d4;
+    --bg: #f4f6f8;
+    --card: #ffffff;
+    --text: #111;
+    --border: #ccc;
+  }
+  body {
+    font-family: 'Segoe UI', Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    margin: 0;
+    padding: 2rem;
+  }
+  h1 { color: var(--primary); text-align: center; margin-bottom: 1rem; }
+  .container { max-width: 900px; margin: 0 auto; }
+  .card { background: var(--card); border-radius: 10px; box-shadow: 0 2px 6px rgba(0,0,0,0.1); padding: 1.5rem; margin-bottom: 1.5rem; }
+  label { display: block; font-weight: 600; margin-top: 1rem; }
+  input, select, button { width: 100%; padding: 0.6rem; margin-top: 0.3rem; border: 1px solid var(--border); border-radius: 6px; font-size: 1rem; }
+  button { background: var(--accent); color: #fff; border: none; font-weight: bold; cursor: pointer; margin-top: 1rem; }
+  button:hover { background: #005ea8; }
+  table { width: 100%; border-collapse: collapse; margin-top: 1rem; font-size: 0.95rem; }
+  th, td { border: 1px solid var(--border); padding: 0.6rem; text-align: center; }
+  th { background: var(--primary); color: white; }
+  tr:nth-child(even):not(.highlight) { background: #f2f7fc; }
+  tr:hover:not(.highlight):not(:first-child) { background: #eaf2ff; }
+  .highlight { background: #d6eadf; font-weight: bold; }
+  td[contenteditable="true"] { background: #fff8dc; cursor: text; }
+  .metar-data p, .perf-data p { margin: 0.4rem 0; }
+  .section-title { margin-top: 1rem; color: var(--primary); border-bottom: 2px solid var(--accent); display: inline-block; padding-bottom: 0.2rem; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>CE172 Weight and Balance</h1>
+  <div class="card">
+    <label>ICAO Airport Code:</label>
+    <input type="text" id="icao" value="KAUO" maxlength="4" />
+
+    <label>Preferred Runway (numeric heading):</label>
+    <input type="number" id="runway" placeholder="e.g. 36 for 360°" />
+
+   <label>Tail Number:</label>
+<select id="tailNumber">
+  <option value="N1210K">N1210K</option>
+  <option value="N1250K">N1250K</option>
+  <option value="N1422C">N1422C</option>
+  <option value="N1433C">N1433C</option>
+  <option value="N1488C">N1488C</option>
+  <option value="N178GW">N178GW</option>
+  <option value="N208CP">N208CP</option>
+  <option value="N236TF">N236TF</option>
+  <option value="N242AU">N242AU</option>
+  <option value="N243AU">N243AU</option>
+  <option value="N244AU">N244AU</option>
+  <option value="N245AU">N245AU</option>
+  <option value="N242JW">N242JW</option>
+  <option value="N247AU">N247AU</option>
+  <option value="N250AU">N250AU</option>
+  <option value="N251AU">N251AU</option>
+  <option value="N297CP">N297CP</option>
+  <option value="N416CP">N416CP</option>
+  <option value="N585RD">N585RD</option>
+  <option value="N719TH">N719TH</option>
+  <option value="N733CN">N733CN</option>
+  <option value="N733SH">N733SH</option>
+  <option value="N733TU">N733TU</option>
+  <option value="N755WM">N755WM</option>
+  <option value="N7848T">N7848T</option>
+  <option value="N803CA">N803CA</option>
+  <option value="N810CA">N810CA</option>
+  <option value="N811CA">N811CA</option>
+  <option value="N811CT">N811CT</option>
+  <option value="N813CA">N813CA</option>
+  <option value="N814CA">N814CA</option>
+  <option value="N8375T">N8375T</option>
+  <option value="N848PA">N848PA</option>
+  <option value="N849PA">N849PA</option>
+  <option value="N852PA">N852PA</option>
+  <option value="N856AU">N856AU</option>
+  <option value="N857AU">N857AU</option>
+  <option value="N858VK">N858VK</option>
+  <option value="N858WK">N858WK</option>
+  <option value="N858XJ">N858XJ</option>
+  <option value="N858YT">N858YT</option>
+  <option value="N858ZK">N858ZK</option>
+  <option value="N860AU">N860AU</option>
+  <option value="N861AT">N861AT</option>
+  <option value="N861AU">N861AU</option>
+  <option value="N862AU">N862AU</option>
+  <option value="N8789T">N8789T</option>
+  <option value="N9280T">N9280T</option>
+  <option value="N960AU">N960AU</option>
+  <option value="N961AU">N961AU</option>
+  <option value="N962AU">N962AU</option>
+  <option value="N963AU">N963AU</option>
+  <option value="N964AU">N964AU</option>
+  <option value="N965AU">N965AU</option>
+  <option value="N966AU">N966AU</option>
+</select>
+
+
+    <button onclick="fetchMetar()">Get Weather</button>
+  </div>
+
+  <div class="card" id="result"></div>
+</div>
+
+<script>
+const aircraftData = {
+  "N1210K": { weight: 1722.20, arm: 41.90 },
+  "N1250K": { weight: 1706.50, arm: 41.70 },
+  "N1422C": { weight: 1720.90, arm: 41.90 },
+  "N1433C": { weight: 1720.90, arm: 41.90 },
+  "N1488C": { weight: 1720.90, arm: 41.90 },
+  "N178GW": { weight: 1788.67, arm: 44.43 },
+  "N208CP": { weight: 1729.90, arm: 42.20 },
+  "N236TF": { weight: 1689.80, arm: 41.13 },
+  "N242AU": { weight: 1706.70, arm: 42.00 },
+  "N243AU": { weight: 1706.70, arm: 42.00 },
+  "N244AU": { weight: 1706.70, arm: 42.00 },
+  "N245AU": { weight: 1706.70, arm: 42.00 },
+  "N242JW": { weight: 1771.27, arm: 44.07 },
+  "N247AU": { weight: 1706.70, arm: 42.00 },
+  "N250AU": { weight: 1706.70, arm: 42.00 },
+  "N251AU": { weight: 1706.70, arm: 42.00 },
+  "N297CP": { weight: 1729.90, arm: 42.20 },
+  "N416CP": { weight: 1729.90, arm: 42.20 },
+  "N585RD": { weight: 1789.17, arm: 43.98 },
+  "N719TH": { weight: 1756.38, arm: 44.23 },
+  "N733CN": { weight: 1713.90, arm: 41.70 },
+  "N733SH": { weight: 1713.90, arm: 41.70 },
+  "N733TU": { weight: 1713.90, arm: 41.70 },
+  "N755WM": { weight: 1779.67, arm: 44.21 },
+  "N7848T": { weight: 1729.90, arm: 42.17 },
+  "N803CA": { weight: 1706.70, arm: 42.00 },
+  "N810CA": { weight: 1706.70, arm: 42.00 },
+  "N811CA": { weight: 1706.70, arm: 42.00 },
+  "N811CT": { weight: 1788.70, arm: 44.43 },
+  "N813CA": { weight: 1706.70, arm: 42.00 },
+  "N814CA": { weight: 1706.70, arm: 42.00 },
+  "N8375T": { weight: 1729.90, arm: 42.17 },
+  "N848PA": { weight: 1682.60, arm: 41.30 },
+  "N849PA": { weight: 1682.60, arm: 41.30 },
+  "N852PA": { weight: 1654.70, arm: 40.78 },
+  "N856AU": { weight: 1754.88, arm: 44.05 },
+  "N857AU": { weight: 1754.95, arm: 44.05 },
+  "N858VK": { weight: 1696.00, arm: 41.70 },
+  "N858WK": { weight: 1696.00, arm: 41.70 },
+  "N858XJ": { weight: 1696.00, arm: 41.70 },
+  "N858YT": { weight: 1696.00, arm: 41.74 },
+  "N858ZK": { weight: 1696.00, arm: 41.70 },
+  "N860AU": { weight: 1754.95, arm: 44.05 },
+  "N861AT": { weight: 1729.90, arm: 42.17 },
+  "N861AU": { weight: 1788.67, arm: 44.43 },
+  "N862AU": { weight: 1774.27, arm: 44.24 },
+  "N8789T": { weight: 1729.90, arm: 42.17 },
+  "N9280T": { weight: 1729.90, arm: 42.17 },
+  "N960AU": { weight: 1754.88, arm: 44.05 },
+  "N961AU": { weight: 1752.48, arm: 44.05 },
+  "N962AU": { weight: 1754.95, arm: 44.05 },
+  "N963AU": { weight: 1788.67, arm: 44.43 },
+  "N964AU": { weight: 1788.67, arm: 44.43 },
+  "N965AU": { weight: 1779.27, arm: 44.21 },
+  "N966AU": { weight: 1788.67, arm: 44.43 }
+};
+
+
+const defaultWeights = {
+  "Pilot/Front Passenger": 340,
+  "Rear Passenger(s)": 0,
+  "Baggage": 0,
+  "Baggage B": 0,
+  "Useable Fuel (lbs)": 318,
+  "Fuel for start, taxi, run up": -8,
+  "Fuel Used (lbs)": -60
+};
+
+const fixedArms = {
+  "Pilot/Front Passenger": 37.00,
+  "Rear Passenger(s)": 73.00,
+  "Baggage": 95.00,
+  "Baggage B": 123.00,
+  "Useable Fuel (lbs)": 48.00,
+  "Fuel for start, taxi, run up": 48.00,
+  "Fuel Used (lbs)": 48.00
+};
+
+// Performance tables
+const SFTRTable = {
+0:{0:860,10:925,20:995,30:1070,40:1150},1000:{0:940,10:1010,20:1090,30:1170,40:1260},2000:{0:1025,10:1110,20:1195,30:1285,40:1380},
+3000:{0:1125,10:1215,20:1310,30:1410,40:1515},4000:{0:1235,10:1335,20:1440,30:1550,40:1660},5000:{0:1355,10:1465,20:1585,30:1705,40:1825},
+6000:{0:1495,10:1615,20:1745,30:1875,40:2010},7000:{0:1645,10:1785,20:1920,30:2065,40:2215},8000:{0:1820,10:1970,20:2120,30:2280,40:2450}
+};
+const SFT50Table = {
+0:{0:1465,10:1575,20:1690,30:1810,40:1945},1000:{0:1600,10:1720,20:1850,30:1990,40:2135},2000:{0:1755,10:1890,20:2035,30:2190,40:2355},
+3000:{0:1925,10:2080,20:2240,30:2420,40:2605},4000:{0:2120,10:2295,20:2480,30:2685,40:2880},5000:{0:2345,10:2545,20:2755,30:2975,40:3205},
+6000:{0:2605,10:2830,20:3075,30:3320,40:3585},7000:{0:2910,10:3170,20:3440,30:3730,40:4045},8000:{0:3265,10:3575,20:3880,30:4225,40:4615}
+};
+const SFLRTable = {
+0:{0:545,10:565,20:585,30:605,40:625},1000:{0:565,10:585,20:605,30:625,40:650},2000:{0:585,10:610,20:630,30:650,40:670},
+3000:{0:610,10:630,20:655,30:675,40:695},4000:{0:630,10:655,20:675,30:700,40:725},5000:{0:655,10:680,20:705,30:725,40:750},
+6000:{0:680,10:705,20:730,30:755,40:780},7000:{0:705,10:730,20:760,30:785,40:810},8000:{0:735,10:760,20:790,30:815,40:840}
+};
+const SFL50Table = {
+0:{0:1290,10:1320,20:1350,30:1380,40:1415},1000:{0:1320,10:1350,20:1385,30:1420,40:1450},2000:{0:1355,10:1385,20:1420,30:1455,40:1490},
+3000:{0:1385,10:1425,20:1460,30:1495,40:1530},4000:{0:1425,10:1460,20:1495,30:1535,40:1570},5000:{0:1460,10:1500,20:1535,30:1575,40:1615},
+6000:{0:1500,10:1540,20:1580,30:1620,40:1660},7000:{0:1545,10:1585,20:1625,30:1665,40:1705},8000:{0:1585,10:1630,20:1670,30:1715,40:1755}
+};
+
+function roundToStep(value, step) { return Math.round(value/step)*step; }
+
+function lookupPerformance(table, pa, oat) {
+  const nearestPA = Math.min(Math.max(roundToStep(pa,1000),0),8000);
+  const nearestOAT = Math.min(Math.max(roundToStep(oat,10),0),40);
+  return table[nearestPA][nearestOAT] || 0;
+}
+
+function calculatePressureAltitude(altimeter, fieldElevation) {
+  return fieldElevation + (29.92 - altimeter) * 1000;
+}
+
+function calculateDensityAltitude(pa, oatC, fieldElevation) {
+  return pa + (120 * (oatC - (15 - (2*fieldElevation/1000))));
+}
+
+function calculateCrosswind(windDir, windSpd, rwyHeading) {
+  const angle = Math.min(Math.abs(windDir - rwyHeading), 360 - Math.abs(windDir - rwyHeading));
+  return Math.round(Math.abs(windSpd * Math.sin(angle*Math.PI/180)));
+}
+
+function preferredRunway(windDir) {
+  let rwy = Math.round(windDir/10);
+  return rwy===0?36:rwy;
+}
+
+async function fetchMetar() {
+  const icao = document.getElementById('icao').value.trim().toUpperCase();
+  const userRunway = document.getElementById('runway').value;
+  const tailNumber = document.getElementById('tailNumber').value;
+  const proxy = "https://api.allorigins.win/raw?url=";
+  const apiUrl = `https://aviationweather.gov/api/data/metar?ids=${icao}&format=json&mostRecent=true`;
+  const url = proxy + encodeURIComponent(apiUrl);
+
+  try {
+    const response = await fetch(url);
+    if(!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+    const data = await response.json();
+    if(data && data.length>0){
+      const metar = data[0];
+      const altimeter = parseFloat((metar.altim/33.864).toFixed(2));
+      const fieldElevation = 777;
+      const oat = parseFloat(metar.temp);
+      const pa = calculatePressureAltitude(altimeter, fieldElevation);
+      const da = calculateDensityAltitude(pa, oat, fieldElevation);
+      const windDir = parseFloat(metar.wdir);
+      const windSpd = parseFloat(metar.wspd);
+      const gusts = metar.wgst?parseFloat(metar.wgst):null;
+      const rwy = userRunway?parseInt(userRunway):preferredRunway(windDir);
+      const xwind = calculateCrosswind(windDir, windSpd, rwy*10);
+
+      const output = `
+      <div class="metar-data">
+        <h2 class="section-title">Weather Results</h2>
+        <p><strong>Raw METAR:</strong> ${metar.rawOb}</p>
+        <p><strong>Altimeter:</strong> ${altimeter} inHg</p>
+        <p><strong>Elevation:</strong> ${fieldElevation} ft</p>
+        <p><strong>OAT:</strong> ${oat} °C</p>
+        <p><strong>Pressure Altitude:</strong> <span id="paValue">${pa.toFixed(0)}</span> ft</p>
+        <p><strong>Density Altitude:</strong> ${da.toFixed(0)} ft</p>
+        <p><strong>Wind:</strong> ${windDir}° @ ${windSpd} kt ${gusts?`(G${gusts})`:''}</p>
+        <p><strong>Preferred Runway:</strong> ${rwy}</p>
+        <p><strong>Crosswind:</strong> ${xwind} kt</p>
+      </div>
+
+      <div class="perf-data">
+        <h2 class="section-title">Performance Calculations</h2>
+        <p><strong>Va:</strong> <span id="vaValue">0</span> knots</p>
+        <p><strong>SFTR:</strong> <span id="sftrValue">0</span> ft</p>
+        <p><strong>SFT 50 ft Obs:</strong> <span id="sft50Value">0</span> ft</p>
+        <p><strong>SFLR:</strong> <span id="sflrValue">0</span> ft</p>
+        <p><strong>SFL 50 ft Obs:</strong> <span id="sfl50Value">0</span> ft</p>
+      </div>
+
+      <h2 class="section-title">Weight and Balance</h2>
+      <table>
+        <tr><th></th><th>Weight</th><th>Arm</th><th>Moment</th></tr>
+        <tr><td>Basic Empty Weight</td><td></td><td></td><td></td></tr>
+        <tr><td>Pilot/Front Passenger</td><td></td><td></td><td></td></tr>
+        <tr><td>Rear Passenger(s)</td><td></td><td></td><td></td></tr>
+        <tr><td>Baggage</td><td></td><td></td><td></td></tr>
+        <tr><td>Baggage B</td><td></td><td></td><td></td></tr>
+        <tr class="highlight"><td>Zero Fuel Weight</td><td></td><td></td><td></td></tr>
+        <tr><td>Useable Fuel (lbs)</td><td></td><td></td><td></td></tr>
+        <tr class="highlight"><td>Ramp Weight</td><td></td><td></td><td></td></tr>
+        <tr><td>Fuel for start, taxi, run up</td><td></td><td></td><td></td></tr>
+        <tr class="highlight"><td>Takeoff Condition</td><td></td><td></td><td></td></tr>
+        <tr><td>Fuel Used (lbs)</td><td></td><td></td><td></td></tr>
+        <tr class="highlight"><td>Landing Condition</td><td></td><td></td><td></td></tr>
+      </table>
+      `;
+      document.getElementById('result').innerHTML = output;
+      updateWnB(tailNumber, pa, oat);
+    } else {
+      document.getElementById('result').innerHTML = `<p>No METAR data found for ${icao}.</p>`;
+    }
+  } catch(err){
+    document.getElementById('result').innerHTML = `<p style='color:red;'>Error: ${err.message}</p>`;
+  }
+}
+
+function updateWnB(tail, pa=0, oat=0){
+  const table = document.querySelector("#result table");
+  if(!table||!aircraftData[tail]) return;
+  const rows = table.querySelectorAll("tr");
+
+  rows.forEach((row,index)=>{
+    if(index===0) return;
+    const cells = row.querySelectorAll("td");
+    const name = cells[0].innerText;
+
+    // Basic Empty Weight
+    if(name.includes("Basic Empty Weight")){
+      const w = aircraftData[tail].weight;
+      const a = aircraftData[tail].arm;
+      cells[1].innerText = w.toFixed(2);
+      cells[2].innerText = a.toFixed(2);
+      cells[3].innerText = ((w*a)/1000).toFixed(2);
+    }
+
+    // Fixed arms
+    if(fixedArms[name]!==undefined){
+      cells[2].innerText = fixedArms[name].toFixed(2);
+      const defaultW = defaultWeights[name]||0;
+      cells[1].innerText = defaultW.toFixed(2);
+      cells[1].setAttribute("contenteditable","true");
+    }
+
+    // Editable weights and arms
+    if(!row.classList.contains("highlight") && fixedArms[name]===undefined && !name.includes("Basic Empty Weight")){
+      const defaultW = defaultWeights[name]||0;
+      cells[1].innerText = defaultW.toFixed(2);
+      cells[1].setAttribute("contenteditable","true");
+      cells[2].setAttribute("contenteditable","true");
+    }
+  });
+
+  table.addEventListener("input",()=>calculateMoments());
+
+  calculateMoments();
+
+  function calculateMoments(){
+    rows.forEach((row,index)=>{
+      if(index===0) return;
+      const cells = row.querySelectorAll("td");
+      const name = cells[0].innerText;
+      let w = parseFloat(cells[1].innerText)||0;
+      let a = parseFloat(cells[2].innerText)||0;
+
+      if(fixedArms[name]!==undefined) a=fixedArms[name];
+
+      if(!row.classList.contains("highlight")){
+        cells[3].innerText = ((w*a)/1000).toFixed(2);
+        cells[2].innerText = a.toFixed(2);
+      }
+
+      if(row.classList.contains("highlight")){
+        let sumW=0,sumMoment=0,sumAW=0;
+        for(let i=1;i<index;i++){
+          const r = rows[i];
+          if(!r.classList.contains("highlight")){
+            const c = r.querySelectorAll("td");
+            const w1 = parseFloat(c[1].innerText)||0;
+            const a1 = parseFloat(c[2].innerText)||0;
+            sumW+=w1;
+            sumMoment+=(w1*a1)/1000;
+            sumAW+=w1*a1;
+          }
+        }
+        cells[1].innerText = sumW.toFixed(2);
+        cells[3].innerText = sumMoment.toFixed(2);
+        cells[2].innerText = sumW?(sumAW/sumW).toFixed(2):"0.00";
+
+        // Update performance values on Takeoff Condition
+        if(name.includes("Takeoff Condition")){
+          const takeoffWeight = sumW;
+          const va = 105*Math.sqrt(takeoffWeight/2550);
+          const sftr = lookupPerformance(SFTRTable,pa,oat);
+          const sft50 = lookupPerformance(SFT50Table,pa,oat);
+          const sflr = lookupPerformance(SFLRTable,pa,oat);
+          const sfl50 = lookupPerformance(SFL50Table,pa,oat);
+
+          document.getElementById("vaValue").innerText = va.toFixed(0);
+          document.getElementById("sftrValue").innerText = sftr.toFixed(0);
+          document.getElementById("sft50Value").innerText = sft50.toFixed(0);
+          document.getElementById("sflrValue").innerText = sflr.toFixed(0);
+          document.getElementById("sfl50Value").innerText = sfl50.toFixed(0);
+        }
+      }
+    });
+  }
+}
+
+document.getElementById("tailNumber").addEventListener("change",()=>{
+  const tail = document.getElementById("tailNumber").value;
+  const pa = parseFloat(document.getElementById("paValue")?.innerText)||0;
+  const oat = parseFloat(document.querySelector(".metar-data p:nth-child(4)")?.innerText.replace("OAT: ","").replace(" °C",""))||0;
+  updateWnB(tail,pa,oat);
+});
+
+window.addEventListener("load",()=>{
+  const tail = document.getElementById("tailNumber").value;
+  updateWnB(tail);
+});
+</script>
+</body>
+</html>
